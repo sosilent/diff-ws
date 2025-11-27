@@ -1,5 +1,6 @@
 package com.ijiaodui.diff.resources;
 
+import com.alibaba.nacos.shaded.com.google.gson.Gson;
 import com.futureinteraction.utils.http.HttpUtils;
 import io.vertx.core.http.HttpServerResponse;
 import io.vertx.core.json.JsonObject;
@@ -40,6 +41,7 @@ public class DiffResource {
 
         JsonObject result = new JsonObject();
         result.put("cost_time", costTime);
+        result.put("result", new JsonObject());
 
         response.end(result.encodePrettily());
     }
