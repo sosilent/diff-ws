@@ -1,7 +1,7 @@
 package com.ijiaodui.diff.resources;
 
-import com.alibaba.nacos.shaded.com.google.gson.Gson;
 import com.futureinteraction.utils.http.HttpUtils;
+import com.ijiaodui.diff.pdfdiff.AiBiDuiPdfDiffProc;
 import io.vertx.core.http.HttpServerResponse;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.web.FileUpload;
@@ -11,6 +11,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.http.HttpStatus;
 
 import java.util.List;
+import java.util.concurrent.Callable;
 
 @Slf4j
 public class DiffResource {
@@ -36,14 +37,32 @@ public class DiffResource {
 
         long time = System.currentTimeMillis();
 
-        response.setStatusCode(HttpStatus.SC_OK);
-        long costTime = System.currentTimeMillis() - time;
+        String srcPdfFilePath = fileUploadSet.get(0).uploadedFileName();
+        String cmpPdfFilePath = fileUploadSet.get(1).uploadedFileName();
 
-        JsonObject result = new JsonObject();
-        result.put("cost_time", costTime);
-        result.put("result", new JsonObject());
+        Callable<String> callable = () -> AiBiDuiPdfDiffProc.getPdfDiffJsonString(srcPdfFilePath, cmpPdfFilePath);
+        context.vertx().executeBlocking(callable).onFailure(failure -> {
+            response.setStatusCode(HttpStatus.SC_INTERNAL_SERVER_ERROR);
+            JsonObject rt = new JsonObject();
+            rt.put("code", HttpStatus.SC_INTERNAL_SERVER_ERROR);
+            rt.put("msg", failure.getMessage());
+            response.end(rt.encodePrettily());
+        }).onSuccess(success -> {
+            HttpUtils.setHttpHeader(response);
+            JsonObject rt = new JsonObject(success);
+            long costTime = System.currentTimeMillis() - time;
+            rt.put("cost_time", costTime);
+            response.end(rt.encodePrettily());
+        }).onComplete(done -> {
+            context.vertx().fileSystem().delete(srcPdfFilePath).onFailure(failure -> {
+                log.error(failure.getMessage());
+            });
 
-        response.end(result.encodePrettily());
+            context.vertx().fileSystem().delete(cmpPdfFilePath).onFailure(failure -> {
+                log.error(failure.getMessage());
+            });
+        });
+
     }
 
     private JsonObject genResponse(int code, String msg) {
