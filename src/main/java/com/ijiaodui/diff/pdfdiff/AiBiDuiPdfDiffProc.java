@@ -13,6 +13,7 @@ import com.google.gson.JsonPrimitive;
 
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.json.JsonArray;
+
 import org.apache.pdfbox.Loader;
 import org.apache.pdfbox.pdmodel.PDDocument;
 
@@ -53,9 +54,9 @@ public class AiBiDuiPdfDiffProc extends AiBiDuiDiffProc{
     }
 
 
-    public static List<Difference> getPdfFormatDiff(String srcPdfFilePath, String cmpPdfFilePath) {
+    public static List<AiBiDuiDiffProc.Difference> getPdfFormatDiff(String srcPdfFilePath, String cmpPdfFilePath) {
         AiBiDuiDiffProc difProc = new AiBiDuiDiffProc();
-        List<Difference> differences = new ArrayList<>();
+        List<AiBiDuiDiffProc.Difference> differences = new ArrayList<>();
         try {
             AiBiDuiPDFTextStripper srcPdfStripper = new AiBiDuiPDFTextStripper();
             File srcFile = new File(srcPdfFilePath);
@@ -82,10 +83,10 @@ public class AiBiDuiPdfDiffProc extends AiBiDuiDiffProc{
         String jsonOutput = ""; // Return value
 
         String similarity = "";
-        int addedCount = 0, deletedCount = 0, modifiedCount = 0;
+        int insertCount = 0, deletedCount = 0, modifiedCount = 0;
         
         AiBiDuiDiffProc difProc = new AiBiDuiDiffProc();
-        List<Difference> differences = new ArrayList<>();
+        List<AiBiDuiDiffProc.Difference> differences = new ArrayList<>();
         
         try {
             AiBiDuiPDFTextStripper srcPdfStripper = new AiBiDuiPDFTextStripper();
@@ -114,7 +115,7 @@ public class AiBiDuiPdfDiffProc extends AiBiDuiDiffProc{
                         deletedCount ++;                        
                         break;
                     case INSERT:
-                        addedCount ++;
+                        insertCount ++;
                         break;
                     case MODIFY:
                         modifiedCount ++;
@@ -124,7 +125,7 @@ public class AiBiDuiPdfDiffProc extends AiBiDuiDiffProc{
                 }
             }
             
-            System.out.println("addCount: " + addedCount);
+            System.out.println("insertCount: " + insertCount);
             System.out.println("deletedCount: " + deletedCount);
             System.out.println("modifiedCount: " + modifiedCount);
             System.out.println("Similarity: " + similarity);
@@ -141,7 +142,7 @@ public class AiBiDuiPdfDiffProc extends AiBiDuiDiffProc{
             
             Data data = new Data();
             data.similarity = similarity;
-            data.addedCount = addedCount;
+            data.addedCount = insertCount;
             data.deletedCount = deletedCount;
             data.modifiedCount = modifiedCount;
 
@@ -153,7 +154,7 @@ public class AiBiDuiPdfDiffProc extends AiBiDuiDiffProc{
                         difference.status = "DELETE";
                         break;
                     case INSERT:
-                        difference.status = "ADD";
+                        difference.status = "INSERT";
                         break;
                     case MODIFY:
                         difference.status = "MODIFY";
@@ -239,7 +240,7 @@ public class AiBiDuiPdfDiffProc extends AiBiDuiDiffProc{
             JsonElement element = gJsonObject.get(key);
             
             if (element.isJsonPrimitive()) {
-                // 处理基本类型
+                // Simple dict
                 JsonPrimitive primitive = element.getAsJsonPrimitive();
                 if (primitive.isString()) {
                     vJsonObject.put(key, primitive.getAsString());
@@ -249,10 +250,10 @@ public class AiBiDuiPdfDiffProc extends AiBiDuiDiffProc{
                     vJsonObject.put(key, primitive.getAsNumber());
                 }
             } else if (element.isJsonObject()) {
-                // 递归转换嵌套JsonObject
+                // Nested data
                 vJsonObject.put(key, gsonToVertx(element.getAsJsonObject()));
             } else if (element.isJsonArray()) {
-                // 转换JsonArray
+                // to JsonArray
                 com.google.gson.JsonArray gsonArray = element.getAsJsonArray();
                 JsonArray vertxArray = new JsonArray();
                 for (JsonElement arrElement : gsonArray) {
