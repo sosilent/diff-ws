@@ -16,7 +16,7 @@
         <micrometer.version>1.13.2</micrometer.version>
         <log4j.version>2.17.1</log4j.version>
         <softdog.version>0.0.4</softdog.version>
-        <utils.version>1.2.4</utils.version>
+        <utils.version>2.0.0</utils.version>
 
         <main.verticle>com.ijiaodui.diff.Entry</main.verticle>
         <app.version>${project.version}</app.version>
@@ -234,6 +234,11 @@
             <groupId>org.apache.pdfbox</groupId>
             <artifactId>fontbox</artifactId>
             <version>3.0.5</version> <!-- 注意：PDFBox 3.x 对应 FontBox 3.x -->
+        </dependency>
+        <dependency>
+            <groupId>io.minio</groupId>
+            <artifactId>minio</artifactId>
+            <version>8.5.12</version>
         </dependency>
     </dependencies>
 

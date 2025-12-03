@@ -48,27 +48,43 @@ public class AiBiDuiDiffProc extends DiffProc {
     int charIndex1 = 0, charIndex2 = 0;
     for (DiffMatch.Diff d : textDiff) {
       Difference difference = new Difference();
-      List<TextPosition> positions = new ArrayList<>();
+      List<TextPosition> positions1 = new ArrayList<>();
+      List<TextPosition> positions2 = new ArrayList<>();
       String txt = d.text;
       switch (d.operation) {
         case EQUAL:
           difference.status = Status.EQUAL;
           difference.origin = new DiffInfo();
+          difference.target = new DiffInfo();
           difference.origin.value = txt;
+          difference.target.value = txt;
+
           for (int i=0; i<txt.length(); i++) {
-            AiBiDuiPDFTextStripper.CharPosition charPosition = charPositions1.get(charIndex1);
-            TextPosition position = new TextPosition();
-            position.pagNum = charPosition.page;
-            position.chr = charPosition.chr;
-            position.x = charPosition.x;
-            position.y = charPosition.y;
-            position.width = charPosition.width;
-            position.height = charPosition.height;
-            positions.add(position);
+            AiBiDuiPDFTextStripper.CharPosition charPosition1 = charPositions1.get(charIndex1);
+            TextPosition position1 = new TextPosition();
+            position1.pagNum = charPosition1.page;
+            position1.chr = charPosition1.chr;
+            position1.x = charPosition1.x;
+            position1.y = charPosition1.y;
+            position1.width = charPosition1.width;
+            position1.height = charPosition1.height;
+            positions1.add(position1);
+
+            AiBiDuiPDFTextStripper.CharPosition charPosition2 = charPositions2.get(charIndex2);
+            TextPosition position2 = new TextPosition();
+            position2.pagNum = charPosition2.page;
+            position2.chr = charPosition2.chr;
+            position2.x = charPosition2.x;
+            position2.y = charPosition2.y;
+            position2.width = charPosition2.width;
+            position2.height = charPosition2.height;
+            positions2.add(position2);
+
             charIndex1 ++;
             charIndex2 ++;
           }
-          difference.origin.positions = positions;
+          difference.origin.positions = positions1;
+          difference.target.positions = positions2;
           break;
 
         case DELETE:
@@ -84,10 +100,10 @@ public class AiBiDuiDiffProc extends DiffProc {
             position.y = charPosition.y;
             position.width = charPosition.width;
             position.height = charPosition.height;
-            positions.add(position);
+            positions1.add(position);
             charIndex1 ++;
           }
-          difference.origin.positions = positions;
+          difference.origin.positions = positions1;
           break;
 
         case INSERT:
@@ -103,10 +119,10 @@ public class AiBiDuiDiffProc extends DiffProc {
             position.y = charPosition.y;
             position.width = charPosition.width;
             position.height = charPosition.height;
-            positions.add(position);
+            positions1.add(position);
             charIndex2 ++;
           }
-          difference.target.positions = positions;
+          difference.target.positions = positions1;
           break;
       }
       differences.add(difference);
@@ -158,12 +174,18 @@ public class AiBiDuiDiffProc extends DiffProc {
         if (value == "") {
           diff.origin = null;
         }
+        else if (value == "\u0000") {
+          diff.origin.value = "";
+        }
       }
       if (diff.target != null) {
         String value = diff.target.value;
         value = value.replace(" ", "");
         if (value == "") {
           diff.target = null;
+        }
+        else if (value == "\u0000") {
+          diff.target.value = "";
         }
       }
       if (diff.origin == null && diff.target == null) {
@@ -195,16 +217,39 @@ public class AiBiDuiDiffProc extends DiffProc {
         List<TextPosition> positions = new ArrayList<>();
         positions.add(position);
         DiffInfo diffInfo = new DiffInfo();
-        diffInfo.value = String.valueOf(position.chr);
+        diffInfo.value = "\u0000";
         diffInfo.positions = positions;
         differences.get(0).origin = diffInfo;
       }
     }
 
+    // If the first item status is DELETE 
+    else if (differences.get(0).status == Status.DELETE) {
+      if (differences.size()>1) {
+        Difference sourceDiff = differences.get(1);
+        List<TextPosition> sourcePositions = sourceDiff.target.positions;
+        TextPosition sourcePosition = sourcePositions.get(0);
+        TextPosition position = new TextPosition();
+        position.pagNum = sourcePosition.pagNum;
+        position.chr = '\0';
+        position.x = sourcePosition.x;
+        position.y = sourcePosition.y;
+        position.width = 0;
+        position.height = sourcePosition.height;
+        List<TextPosition> positions = new ArrayList<>();
+        positions.add(position);
+        DiffInfo diffInfo = new DiffInfo();
+        diffInfo.value = "\u0000";
+        diffInfo.positions = positions;
+        differences.get(0).target = diffInfo;
+      }
+
+    }
+
     for (int i = 0; i < differences.size()-1; i++) {
       // Refille INSERT items.
-      Difference diff = differences.get(i+1);
-      if (diff.status == Status.INSERT) {
+      Difference diffInsert = differences.get(i+1);
+      if (diffInsert.status == Status.INSERT) {
           Difference sourceDiff = differences.get(i);
           List<TextPosition> sourcePositions = sourceDiff.origin.positions;
           TextPosition sourcePosition = sourcePositions.get(sourcePositions.size()-1);
@@ -220,9 +265,32 @@ public class AiBiDuiDiffProc extends DiffProc {
           positions.add(position);
 
           DiffInfo diffInfo = new DiffInfo();
-          diffInfo.value = String.valueOf(position.chr);
+          diffInfo.value = "\u0000";
           diffInfo.positions = positions;
-          diff.origin = diffInfo;
+          diffInsert.origin = diffInfo;
+      }
+
+      // Refille DELETE items.
+      Difference diffDelete = differences.get(i+1);
+      if (diffDelete.status == Status.DELETE) {
+          Difference sourceDiff = differences.get(i);
+          List<TextPosition> sourcePositions = sourceDiff.target.positions;
+          TextPosition sourcePosition = sourcePositions.get(sourcePositions.size()-1);
+          TextPosition position = new TextPosition();
+          position.pagNum = sourcePosition.pagNum;
+          position.chr = sourcePosition.chr;
+          position.x = sourcePosition.x;
+          position.y = sourcePosition.y;
+          position.width = sourcePosition.width;
+          position.height = sourcePosition.height;
+
+          List<TextPosition> positions = new ArrayList<>();
+          positions.add(position);
+
+          DiffInfo diffInfo = new DiffInfo();
+          diffInfo.value = "\u0000";
+          diffInfo.positions = positions;
+          diffDelete.target = diffInfo;
       }
 
       // Make MODIFY items.
@@ -237,6 +305,7 @@ public class AiBiDuiDiffProc extends DiffProc {
     }
 
     this.aiPurifyDiff(differences);
+
     // Get rid of EQUAL items.
     Iterator<Difference> iterator = differences.iterator();
     while (iterator.hasNext()) {

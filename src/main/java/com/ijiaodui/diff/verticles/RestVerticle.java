@@ -1,6 +1,7 @@
 package com.ijiaodui.diff.verticles;
 
 import com.futureinteraction.utils.cluster.VerticleMonitor;
+import com.futureinteraction.utils.files.MinioWrapper;
 import com.futureinteraction.utils.http.HttpUtils;
 import com.hcifuture.softdog.SoftDogHandler;
 import com.ijiaodui.diff.resources.DiffResource;
@@ -8,7 +9,6 @@ import com.ijiaodui.diff.utils.RequestLogHandler;
 import io.vertx.core.AbstractVerticle;
 import io.vertx.core.Future;
 import io.vertx.core.Promise;
-import io.vertx.core.Vertx;
 import io.vertx.core.eventbus.Message;
 import io.vertx.core.eventbus.MessageConsumer;
 import io.vertx.core.http.HttpMethod;
@@ -70,11 +70,20 @@ public class RestVerticle extends AbstractVerticle {
                 .setIdleTimeout(maxTime)
                 .setCompressionSupported(true);
 
+        JsonObject minioConfig = config().getJsonObject("minio");
         server = vertx.createHttpServer(serverOptions).requestHandler(router);
-
         Promise<Void> promise = Promise.promise();
         server.listen().onSuccess(success -> {
-            regRestApi(vertx, router);
+            MinioWrapper minioInstance = new MinioWrapper(vertx);
+
+            if (minioConfig != null) {
+                minioInstance.initClient(minioConfig.getString("url"),
+                        minioConfig.getString("access_key"),
+                        minioConfig.getString("secret_key"),
+                        minioConfig.getString("bucket"));
+            }
+
+            regRestApi(minioInstance, router);
             log.info("start http server at port {}, idleTimeout: {}s", port, maxTime);
             promise.complete();
         }).onFailure(promise::fail);
@@ -103,9 +112,9 @@ public class RestVerticle extends AbstractVerticle {
         router.route().handler(corsHandler);
     }
 
-    private void regRestApi(Vertx vertx, Router mainRouter) {
+    private void regRestApi(MinioWrapper minioWrapper, Router mainRouter) {
         enableCorsSupport(mainRouter);
-        new DiffResource().register(mainRouter);
+        new DiffResource().register(mainRouter, minioWrapper);
 
         HttpUtils.dumpRestApi(mainRouter, "/", log);
     }

@@ -1,5 +1,6 @@
 package com.ijiaodui.diff;
 
+import com.futureinteraction.utils.FileProc;
 import com.futureinteraction.utils.cluster.VerticleMonitor;
 import com.futureinteraction.utils.metrics.MetricsFactory;
 import com.futureinteraction.utils.metrics.MetricsInit;
@@ -23,6 +24,7 @@ import java.io.InputStream;
 import java.net.InetAddress;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
@@ -120,6 +122,14 @@ public class Entry {
             } else {
                 VERTX = done.result().getKey();
 
+                try {
+                    FileProc.setDIR((String) config.rest_verticle.getOrDefault("./tmp", "./tmp"));
+                }
+                catch (Exception e) {
+                    log.error(e.getMessage());
+                }
+
+
                 //设置参数
                 SysConfigInstance.setPara(paraList);
 
@@ -129,12 +139,23 @@ public class Entry {
 
                 MetricsFactory.setMeterRegistry(MetricsInit.getRegistry());
 
+                JsonObject minio = null;
+                Map<String, Object> minioConfig = config.minio;
+                if (minioConfig != null) {
+                    minio = new JsonObject();
+                    minio.put("url", minioConfig.get("url"))
+                            .put("access_key", minioConfig.get("access_key"))
+                            .put("secret_key", minioConfig.get("secret_key"))
+                            .put("bucket", minioConfig.get("bucket"));
+                }
+
                 JsonObject restVerticlePara = new JsonObject();
                 restVerticlePara
                         .put("port", config.rest_verticle.getOrDefault("port", 8080))
                         .put("max_time", config.rest_verticle.getOrDefault("max_time", 300))
                         .put("max_body", config.rest_verticle.getOrDefault("max_body", -1))
-                        .put("uploads", config.rest_verticle.getOrDefault("uploads", null));
+                        .put("uploads", config.rest_verticle.getOrDefault("uploads", null))
+                        .put("minio", minio);
 
                 if (config.rest_verticle.containsKey("host"))
                     restVerticlePara.put("host", config.rest_verticle.get("host"));

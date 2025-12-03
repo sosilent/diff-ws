@@ -1,6 +1,8 @@
 package com.ijiaodui.diff.pdfdiff;
 
 import org.apache.pdfbox.pdmodel.PDDocument;
+import org.apache.pdfbox.pdmodel.font.PDFont;
+import org.apache.pdfbox.pdmodel.font.PDFontDescriptor;
 import org.apache.pdfbox.text.PDFTextStripper;
 import org.apache.pdfbox.text.TextPosition;
 
@@ -17,6 +19,7 @@ public class AiBiDuiPDFTextStripper extends PDFTextStripper {
     public static class CharPosition {
         public char chr;
         public float x;
+        public float y_orgin;
         public float y;
         public float width;
         public float height;
@@ -31,7 +34,8 @@ public class AiBiDuiPDFTextStripper extends PDFTextStripper {
     @Override
     protected void writeString(String text, List<TextPosition> textPositions) throws IOException {
         if (charPositions.size() > 0) {
-            if (Math.abs(textPositions.get(0).getYDirAdj() - charPositions.get(charPositions.size()-1).y) > charPositions.get(charPositions.size()-1).height / 2) {
+            //if (Math.abs(textPositions.get(0).getYDirAdj() - charPositions.get(charPositions.size()-1).y) > charPositions.get(charPositions.size()-1).height / 2) {
+            if (Math.abs(textPositions.get(0).getYDirAdj() - (charPositions.get(charPositions.size()-1).y_orgin)) > charPositions.get(charPositions.size()-1).height / 2) {
                 CharPosition charPosition = new CharPosition();
                 charPosition.chr = '\n';
                 charPosition.x = 0;
@@ -47,18 +51,33 @@ public class AiBiDuiPDFTextStripper extends PDFTextStripper {
         int charIndex = 0;
         for (TextPosition position : textPositions) {
             CharPosition charPosition = new CharPosition();
-            charPosition.chr = text.charAt(charIndex);
-            charPosition.x = position.getXDirAdj();
-            charPosition.y = position.getYDirAdj();
-            charPosition.width = position.getWidthDirAdj();
-            charPosition.height = position.getTextMatrix().getScaleY();
             charPosition.fontSize = position.getFontSize();
             charPosition.page = this.currentPage;
+            charPosition.chr = text.charAt(charIndex);
+            charPosition.x = position.getXDirAdj();
+            charPosition.y_orgin = position.getYDirAdj();
+            charPosition.y = charPosition.y_orgin - position.getTextMatrix().getScaleY();   ///
+            charPosition.width = position.getWidthDirAdj();
+            //charPosition.height = position.getTextMatrix().getScaleY();
+            charPosition.height = position.getHeight() * 2;
+            /*
+            PDFont font = position.getFont();
+            PDFontDescriptor fontDesc = font.getFontDescriptor();
+            if (fontDesc != null) {
+                float ascent = fontDesc.getAscent();   
+                float descent = fontDesc.getDescent(); 
+                float designHeight = (ascent - descent) / 1000f; 
+                float yScale = position.getYScale();
+                float realHeight = designHeight  * yScale;
+                charPosition.height = realHeight;
+            }
+            */
+
             charIndex ++;
             this.charPositions.add(charPosition);
             this.text += charPosition.chr;
         }
-        writeString(text);
+        output.write(text);
     }
 
     public void strip(PDDocument doc){
