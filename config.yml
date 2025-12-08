@@ -1,0 +1,14 @@
+rest_verticle:
+  port: 8080
+  instance: 8
+  max_time: 600
+#metrics:
+#  details: 1
+#  database: algo-word-check
+#  db_url: http://127.0.0.1:8086
+
+minio:
+  url: http://118.193.124.158:25520
+  access_key: 5pNsfzUGpO8sNuxEgS6Y
+  secret_key: NEoC1GlKFtcuXl2Z0Ao0z1oEKFsN0pQzrokJG2Hq
+  bucket: misscut-tmp
